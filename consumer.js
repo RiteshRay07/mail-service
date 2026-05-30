@@ -1,26 +1,70 @@
 import dotenv from "dotenv";
+
 dotenv.config();
 
 import { Worker } from "bullmq";
+
 import { connection } from "./config/redis.js";
-import { transporter } from "./config/mailer.js";
+import { sendMail } from "./services/sendMail.js";
+import { otpTemplate } from "./templates/otpTemplate.js";
+import { welcomeTemplate } from "./templates/welcomeTemplate.js";
+import { loginTemplate } from "./templates/loginTemplate.js";
+import { logoutTemplate } from "./templates/logoutTemplate.js";
 
 const worker = new Worker(
   "mail-queue",
 
   async (job) => {
-    console.log("Processing job:", job.id);
+    console.log("Processing job:", job.name);
 
-    const { to, subject, text } = job.data;
+    switch (job.name) {
+      case "otp-mail":
+        await sendMail({
+          to: job.data.to,
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to,
-      subject,
-      text,
-    });
+          subject: "Your OTP",
 
-    console.log("Mail sent");
+          html: otpTemplate(job.data.otp),
+        });
+
+        break;
+
+      case "welcome-mail":
+        await sendMail({
+          to: job.data.to,
+
+          subject: "Welcome",
+
+          html: welcomeTemplate(job.data.name || job.data.to),
+        });
+
+        break;
+
+      case "login-alert":
+        await sendMail({
+          to: job.data.to,
+
+          subject: "New Login Alert",
+
+          html: loginTemplate(job.data.device),
+        });
+
+        break;
+
+      case "logout-alert":
+        await sendMail({
+          to: job.data.to,
+
+          subject: "New LogOut Alert",
+
+          html: logoutTemplate(job.data.device),
+        });
+
+        break;
+
+      default:
+        console.log("Unknown mail type");
+    }
   },
 
   {

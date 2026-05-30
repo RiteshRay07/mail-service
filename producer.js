@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import { mailQueue } from "./config/mail_queue.js";
 
 dotenv.config();
-
 const app = express();
 
 app.use(express.json());
@@ -11,39 +10,62 @@ app.use(express.json());
 const port = process.env.PORT || 5501;
 
 app.get("/", (req, res) => {
-  res.json("Server running");
+  res.json({
+    success: true,
+    message: "Mail Service Running",
+  });
 });
 
 app.post("/send-mail", async (req, res) => {
   try {
-    const { to, subject, text } = req.body;
+    const apiKey = req.headers["x-api-key"];
 
-    await mailQueue.add(
-      "sendMail",
-      {
-        to,
-        subject,
-        text,
+    if (!apiKey || apiKey !== process.env.API_KEY) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+    const { type, ...data } = req.body;
+
+    const allowedTypes = [
+      "otp-mail",
+      "welcome-mail",
+      "login-alert",
+      "logout-alert",
+    ];
+
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid mail type",
+      });
+    }
+
+    const job = await mailQueue.add(type, data, {
+      attempts: 5,
+
+      backoff: {
+        type: "exponential",
+        delay: 3000,
       },
-      {
-        attempts: 3,
 
-        backoff: {
-          type: "exponential",
-          delay: 3000,
-        },
-      },
-    );
+      removeOnComplete: true,
 
-    res.json({
+      removeOnFail: 100,
+    });
+
+    res.status(201).json({
       success: true,
-      message: "Job added to queue",
+      message: "Mail queued successfully",
+      jobId: job.id,
     });
   } catch (error) {
     console.log(error);
 
     res.status(500).json({
       success: false,
+      message: "Internal Server Error",
     });
   }
 });
