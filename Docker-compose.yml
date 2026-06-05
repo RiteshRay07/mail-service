@@ -1,0 +1,52 @@
+
+
+services:
+  redis:
+    image: redis
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+    
+  
+  producer:
+    build: .
+    command: npm run producer
+    ports:
+      - "5000:5000"
+    
+    env_file:
+      - .env
+    
+    environment:
+      REDIS_HOST: redis
+
+    volumes:
+      - .:/mail_service
+    
+    depends_on:
+      - redis
+
+  consumer:
+    build: .
+
+    command: npm run consumer
+
+    env_file:
+      - .env
+    
+    environment:
+      REDIS_HOST: redis
+
+    volumes:
+      - .:/mail_service
+    
+    depends_on:
+      - redis
+      
+    
+
+volumes:
+  redis_data:

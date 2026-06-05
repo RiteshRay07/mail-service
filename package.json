@@ -6,8 +6,10 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "producer": "node --watch producer.js",
-    "consumer": "node --watch consumer.js"
+    "producer": "node producer.js",
+    "consumer": "node consumer.js",
+    "producer:dev": "node --watch producer.js",
+    "consumer:dev": "node --watch consumer.js"
   },
   "keywords": [],
   "author": "",
